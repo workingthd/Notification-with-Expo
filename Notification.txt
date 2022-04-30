@@ -1,68 +1,85 @@
-const { Expo } = require('expo-server-sdk')
-
-
 const notification = async ({ body }) => {
   try {
+    console.log("hello")
+    let query = await CHILD.find({}).select({
+      pushNotificationToken: 1,
+      _id: 0
+    })
     if (body) {
-      let expo = new Expo({ accessToken: process.env.EXPO_ACCESS_TOKEN })
+      const title =body.title
+      const bodyMesg =body.body
 
-      let messages = []
+      const map1 = query.map(x => x.pushNotificationToken)
+      cron.schedule('43 10 * * *', function (body) {
+        console.log('---------------------')
+        console.log('Running Cron Job')
+        for (let i = 0; i < map1.length; i++) {
+          let expo = new Expo({ accessToken: process.env.EXPO_ACCESS_TOKEN })
 
-      let pushToken = 'ExponentPushToken[AMlurwOC2kmRul24H8LrNM]'
-      messages.push({
-        to: pushToken,
-        sound: 'default',
-        title: body.title,
-        body: body.body,
-        data: { withSome: 'data' }
-      })
-
-      let chunks = expo.chunkPushNotifications(messages)
-      let tickets = []
-      ;(async () => {
-        for (let chunk of chunks) {
-          try {
-            let ticketChunk = await expo.sendPushNotificationsAsync(chunk)
-            console.log(ticketChunk)
-            tickets.push(...ticketChunk)
-          } catch (error) {
-            console.error(error)
-          }
-        }
-      })()
-
-      let receiptIds = []
-      for (let ticket of tickets) {
-        if (ticket.id) {
-          receiptIds.push(ticket.id)
-        }
-      }
-
-      let receiptIdChunks = expo.chunkPushNotificationReceiptIds(receiptIds)
-      ;(async () => {
-        for (let chunk of receiptIdChunks) {
-          try {
-            let receipts = await expo.getPushNotificationReceiptsAsync(chunk)
-            console.log(receipts)
-
-            for (let receiptId in receipts) {
-              let { status, message, details } = receipts[receiptId]
-              if (status === 'ok') {
-                continue
-              } else if (status === 'error') {
-                console.error(
-                  `There was an error sending a notification: ${message}`
-                )
-                if (details && details.error) {
-                  console.error(`The error code is ${details.error}`)
-                }
+          let messages = []
+          
+         // ExponentPushToken[${map1[i]}]
+          let pushToken = map1[i]
+console.log(pushToken)
+          messages.push({
+            to: pushToken,
+            sound: 'default',
+            title: title,
+            body: bodyMesg,
+            "badge": 1,
+            data: { withSome: 'data' }
+          })
+          let chunks = expo.chunkPushNotifications(messages)
+          console.log(chunks)
+          let tickets = []
+          ;(async () => {
+            for (let chunk of chunks) {
+              try {
+                let ticketChunk = await expo.sendPushNotificationsAsync(chunk)
+                console.log('=>', ticketChunk)
+                tickets.push(...ticketChunk)
+              } catch (error) {
+                console.error(error)
               }
             }
-          } catch (error) {
-            console.error(error)
+          })()
+
+          let receiptIds = []
+          for (let ticket of tickets) {
+            if (ticket.id) {
+              receiptIds.push(ticket.id)
+            }
           }
+
+          let receiptIdChunks = expo.chunkPushNotificationReceiptIds(receiptIds)
+          ;(async () => {
+            for (let chunk of receiptIdChunks) {
+              try {
+                let receipts = await expo.getPushNotificationReceiptsAsync(
+                  chunk
+                )
+                console.log(receipts)
+
+                for (let receiptId in receipts) {
+                  let { status, message, details } = receipts[receiptId]
+                  if (status === 'ok') {
+                    continue
+                  } else if (status === 'error') {
+                    console.error(
+                      `There was an error sending a notification: ${message}`
+                    )
+                    if (details && details.error) {
+                      console.error(`The error code is ${details.error}`)
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error(error)
+              }
+            }
+          })()
         }
-      })()
+      })
     }
   } catch (error) {
     console.log(error)
